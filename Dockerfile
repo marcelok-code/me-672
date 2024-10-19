@@ -40,13 +40,13 @@ RUN echo ${TARGETPLATFORM} && \
         python3 -m pip install --no-cache-dir vtk; \
     fi
 
-# Install the package and purge pip cache to reduce image size
-RUN python3 -m pip install --no-cache-dir --no-binary=h5py -v . && \
-    python3 -m pip cache purge
-
 # Add project files
 ADD pyproject.toml /home/me-672/pyproject.toml
 ADD *.ipynb /home/me-672/
+
+# Install the package and purge pip cache to reduce image size
+RUN python3 -m pip install --no-cache-dir --no-binary=h5py -v . && \
+    python3 -m pip cache purge
 
 # Set the entry point for Jupyter Lab
 ENTRYPOINT ["jupyter", "lab", "--ip", "0.0.0.0", "--no-browser", "--allow-root"]
