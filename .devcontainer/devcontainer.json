@@ -1,0 +1,14 @@
+{
+  "name": "Dolfinx ME672 Environment",
+  "image": "ghcr.io/marcelok-code/dolfinx-me672:dev",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter"
+      ]
+    }
+  },
+  "forwardPorts": [8888],
+  "postStartCommand": "jupyter lab --ip=0.0.0.0 --no-browser --allow-root"
+}
