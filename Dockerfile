@@ -1,40 +1,53 @@
-# Execute from root of repo as: docker buildx build --platform=linux/arm64,linux/amd64 -f docker/Dockerfile ./docker/ --progress=plain
+# Execute from the root of the repo as:
+# docker buildx build --platform=linux/arm64,linux/amd64 -f docker/Dockerfile ./docker/ --progress=plain
 
 FROM ghcr.io/fenics/dolfinx/lab:v0.7.2
 ARG TARGETPLATFORM
 
-
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
 ENV DEB_PYTHON_INSTALL_LAYOUT=deb_system
 ENV HDF5_MPI="ON"
 ENV HDF5_DIR="/usr/local"
 ENV PYVISTA_JUPYTER_BACKEND="static"
 
+# Set working directory
 WORKDIR /home/me-672
 
-# Update package lists and install apt-utils
-RUN apt-get update && apt-get install -y apt-utils libgl1-mesa-dev libxrender1 xvfb curl
-RUN curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && \
-    bash nodesource_setup.sh && \
-    apt -y install nodejs
+# Update package lists and install required packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        apt-utils \
+        libgl1-mesa-dev \
+        libxrender1 \
+        xvfb \
+        curl && \
+    # Install Node.js from Nodesource
+    curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    # Clean up package lists to reduce image size
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Upgrade setuptools and pip
-RUN python3 -m pip install -U setuptools pip pkgconfig
+RUN python3 -m pip install --no-cache-dir -U setuptools pip pkgconfig
 
-# BUILD VTK
-# ENV VTK_VERSION="v9.2.6"
-# RUN git clone --recursive --branch ${VTK_VERSION} --single-branch https://gitlab.kitware.com/vtk/vtk.git vtk && \
-#     cmake -G Ninja -DVTK_WHEEL_BUILD=ON -DVTK_WRAP_PYTHON=ON vtk/ && \
-#     ninja && \
-#     python3 setup.py bdist_wheela
+# Install VTK based on target platform
+RUN echo ${TARGETPLATFORM} && \
+    if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+        python3 -m pip install --no-cache-dir "https://github.com/finsberg/vtk-aarch64/releases/download/vtk-9.3.0-cp312/vtk-9.3.0.dev0-cp312-cp312-linux_aarch64.whl"; \
+    else \
+        python3 -m pip install --no-cache-dir vtk; \
+    fi
 
-RUN echo ${TARGETPLATFORM}
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then python3 -m pip install "https://github.com/finsberg/vtk-aarch64/releases/download/vtk-9.3.0-cp312/vtk-9.3.0.dev0-cp312-cp312-linux_aarch64.whl"; fi
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then python3 -m pip install vtk; fi
+# Install the package and purge pip cache to reduce image size
+RUN python3 -m pip install --no-cache-dir --no-binary=h5py -v . && \
+    python3 -m pip cache purge
 
-RUN python3 -m pip install --no-cache-dir --no-binary=h5py -v .
-RUN python3 -m pip cache purge
-
+# Add project files
 ADD pyproject.toml /home/me-672/pyproject.toml
 ADD *.ipynb /home/me-672/
 
+# Set the entry point for Jupyter Lab
 ENTRYPOINT ["jupyter", "lab", "--ip", "0.0.0.0", "--no-browser", "--allow-root"]
+
