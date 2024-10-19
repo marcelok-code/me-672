@@ -11,8 +11,8 @@ ENV PYVISTA_JUPYTER_BACKEND="static"
 
 WORKDIR /home/me-672
 
-# Requirements for pyvista (gl1 and render1) and jupyterlab (nodejs and curl)
-RUN apt-get update && apt-get install -y libgl1-mesa-dev libxrender1 xvfb curl
+# Update package lists and install apt-utils
+RUN apt-get update && apt-get install -y apt-utils libgl1-mesa-dev libxrender1 xvfb curl
 RUN curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh && \
     bash nodesource_setup.sh && \
     apt -y install nodejs
@@ -31,9 +31,10 @@ RUN echo ${TARGETPLATFORM}
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then python3 -m pip install "https://github.com/finsberg/vtk-aarch64/releases/download/vtk-9.3.0-cp312/vtk-9.3.0.dev0-cp312-cp312-linux_aarch64.whl"; fi
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then python3 -m pip install vtk; fi
 
-ADD pyproject.toml /home/me-672/pyproject.toml
-ADD *.ipynb /home/me-672/
 RUN python3 -m pip install --no-cache-dir --no-binary=h5py -v .
 RUN python3 -m pip cache purge
+
+ADD pyproject.toml /home/me-672/pyproject.toml
+ADD *.ipynb /home/me-672/
 
 ENTRYPOINT ["jupyter", "lab", "--ip", "0.0.0.0", "--no-browser", "--allow-root"]
